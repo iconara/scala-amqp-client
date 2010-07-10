@@ -34,6 +34,10 @@ class Channel(channel: RMQChannel) {
     new Exchange(name, channel)
   }
   
+  def deleteExchange(name: String) {
+    channel.exchangeDelete(name)
+  }
+  
   def createQueue(
     name: String,
     durable: Boolean = false,

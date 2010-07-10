@@ -87,8 +87,7 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
     }
 
     "delete an exchange" in {
-      val exchange = channel.createExchange("myExchange")
-      exchange.delete()
+      channel.deleteExchange("myExchange")
       there was one(rmqChannel).exchangeDelete("myExchange")
     }
     
@@ -149,6 +148,12 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
         there was one(rmqChannel).basicPublish("myExchange", "key", false, true, basicProperties, "message".getBytes())
       }
     }
+    
+    "be deleted" in {
+      exchange.delete()
+      there was one(rmqChannel).exchangeDelete("myExchange")
+    }
+    
   }
   
   "A queue" can {
