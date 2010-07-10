@@ -154,6 +154,15 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
       there was one(rmqChannel).exchangeDelete("myExchange")
     }
     
+    "bind multiple queues at the same time" in {
+      val queue1 = channel.createQueue("q1")
+      val queue2 = channel.createQueue("q2")
+      val queue3 = channel.createQueue("q3")
+      exchange.bind("helloWorld", queue1, queue2, queue3)
+      there was one(rmqChannel).queueBind("q1", "myExchange", "helloWorld")
+      there was one(rmqChannel).queueBind("q2", "myExchange", "helloWorld")
+      there was one(rmqChannel).queueBind("q3", "myExchange", "helloWorld")
+    }
   }
   
   "A queue" can {
