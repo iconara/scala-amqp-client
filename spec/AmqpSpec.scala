@@ -34,11 +34,16 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
     val connectionFactory = mock[ConnectionFactory]
     val rmqConnection = mock[RMQConnection]
     val connection = new Connection(connectionFactory)
+    connectionFactory.newConnection() returns rmqConnection
     
     "create a channel" in {
-      connectionFactory.newConnection() returns rmqConnection
       connection.createChannel()
       there was one(rmqConnection).createChannel()
+    }
+    
+    "be disconnected" in {
+      connection.close()
+      there was one(rmqConnection).close()
     }
   }
   
