@@ -80,6 +80,8 @@ class Exchange(val name: String, channel: RMQChannel) {
 }
 
 class Queue(val name: String, channel: RMQChannel) {
+  private var consumers: Map[Actor, ActorConsumerAdapter] = Map.empty
+  
   def bind(exchange: Exchange, routingKey: String) {
     channel.queueBind(name, exchange.name, routingKey)
   }
@@ -89,24 +91,60 @@ class Queue(val name: String, channel: RMQChannel) {
   }
   
   def subscribe(subscriber: Actor, autoAck: Boolean = true) {
-    channel.basicConsume(name, autoAck, new ActorConsumerAdapter(subscriber))
+    val consumerAdapter = new ActorConsumerAdapter(subscriber, this)
+    channel.basicConsume(name, autoAck, consumerAdapter)
+    consumers += (subscriber -> consumerAdapter)
+  }
+  
+  def unsubscribe(subscriber: Actor) {
+    if (consumers contains subscriber) {
+      channel.basicCancel(consumers(subscriber).consumerTag)
+    }
+  }
+  
+  def ack(deliveryTag: Long) {
+    channel.basicAck(deliveryTag, false)
   }
 }
 
-sealed class AmqpMessage
-case class Delivery(message: String) extends AmqpMessage
+sealed abstract class AmqpMessage
+case class Delivery(message: String, deliveryTag: Long) extends AmqpMessage
 case class Shutdown(reason: String) extends AmqpMessage
+case class Ack(deliveryTag: Long) extends AmqpMessage
 
-class ActorConsumerAdapter(consumer: Actor) extends Consumer {
-  override def handleConsumeOk(consumerTag: String) { }
+class ActorConsumerAdapter(consumer: Actor, queue: Queue) extends Actor with Consumer {
+  start()
+  
+  private var _consumerTag: String = null
+  
+  def consumerTag: String = _consumerTag
+  
+  override def handleConsumeOk(consumerTag: String) {
+    _consumerTag = consumerTag
+  }
 
-  override def handleCancelOk(consumerTag: String) { }
+  override def handleCancelOk(consumerTag: String) {
+    this ! 'exit
+  }
 
   override def handleShutdownSignal(consumerTag: String, sig: ShutdownSignalException) {
-    consumer ! Shutdown(sig.getMessage())
+    this ! (consumer, Shutdown(sig.getMessage()))
+    this ! 'exit
   }
 
   override def handleDelivery(consumerTag: String, envelope: Envelope, properties: AMQP.BasicProperties, body: Array[Byte]) {
-    consumer ! Delivery(new String(body))
+    val message = Delivery(new String(body), envelope.getDeliveryTag())
+    this ! (consumer, message)
   }
+  
+  def act() {
+    loop {
+      react {
+        case (receiver: Actor, message: AmqpMessage) => receiver ! message
+        case Ack(deliveryTag) => queue.ack(deliveryTag)
+        case 'exit => exit()
+      }
+    }
+  }
+  
 }

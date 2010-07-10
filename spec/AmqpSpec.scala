@@ -8,6 +8,7 @@ import org.mockito.{Matchers => is, ArgumentCaptor}
 import org.mockito.Matchers._
 
 import scala.actors.Actor
+import scala.actors.Actor._
 
 import java.util.{Map => JavaMap, HashMap => JavaHashMap}
 
@@ -168,6 +169,13 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
         there was one(rmqChannel).basicConsume(is.eq("myQueue"), is.eq(false), any[Consumer])
       }
     }
+    
+    "be unsubscribed from" in {
+      val subscriber = mock[Actor]
+      queue.subscribe(subscriber)
+      queue.unsubscribe(subscriber)
+      there was one(rmqChannel).basicCancel(anyString())
+    }
   }
   
   "A queue subscriber" should {
@@ -189,9 +197,11 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
     }
     
     "get messages" in {
-      consumerAdapter.handleDelivery("1234", mock[Envelope], basicProperties, "theMessage".getBytes())
+      val envelope = mock[Envelope]
+      envelope.getDeliveryTag() returns 1234L
+      consumerAdapter.handleDelivery("1234", envelope, basicProperties, "theMessage".getBytes())
       subscriber.messages match {
-        case Some(list) => list.head must be equalTo(Delivery("theMessage"))
+        case Some(list) => list.head must be equalTo(Delivery("theMessage", 1234L))
         case None => fail("Got no message")
       }
     }
@@ -204,6 +214,31 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
         case Some(list) => list.head must be equalTo(Shutdown("theShutdownMessage"))
         case None => fail("Got no message")
       }
+    }
+    
+    "be able to ack a delivery" in {
+      val ackingSubscriber = actor {
+        var gotDelivery = false
+        loop {
+          react {
+            case Delivery(msg, deliveryTag) =>
+              reply(Ack(deliveryTag))
+              gotDelivery = true
+            case 'get if gotDelivery => reply()
+            case 'exit => exit()
+          }
+        }
+      }
+      val captor = ArgumentCaptor.forClass(classOf[Consumer])
+      queue.subscribe(ackingSubscriber, autoAck = false)
+      there was one(rmqChannel).basicConsume(anyString(), is.eq(false), captor.capture())
+      val consumerAdapter = captor.getValue()
+      val envelope = mock[Envelope]
+      envelope.getDeliveryTag() returns 123L
+      consumerAdapter.handleDelivery("1234", envelope, basicProperties, "theMessage".getBytes())
+      (ackingSubscriber !? (100, 'get))
+      there was one(rmqChannel).basicAck(123L, false)
+      ackingSubscriber ! 'exit
     }
   }
 }
