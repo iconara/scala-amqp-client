@@ -23,7 +23,7 @@ Now, for the second issue: wouldn't it be great if you could have an actor as co
 
     val subscriber = actor {
       loop {
-        react Delivery(message) => println(message)
+        react Delivery(message, _) => println(message)
       }
     }
     queue.subscribe(subscriber)
