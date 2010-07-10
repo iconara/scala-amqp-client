@@ -1,0 +1,31 @@
+# AMQP client for Scala
+
+The RabbitMQ client libraries are great, but have two problems: they are procedural and they are not made for Scala.
+
+The first issue is the most annoying: all interaction with exchanges and queues are through calls such as `exchangeDeclare`, `basicPublish`, etc. To these calls you pass the name of the exchanges and queues, in classic procedural style. This library wraps these calls and presents an object oriented interface where you create and interact through `Exchange` and `Queue` objects. This means that instead of this code:
+
+    channel.exchangeDeclare("myAwesomeExchange", "fanout")
+    String queueName = channel.queueDeclare().getQueue()
+    channel.queueBind("myQueue", "myAwesomeExchange", "someRoutingKey")
+    channel.basicPublish("myAwesomeExchange", "someRoutingKey",
+      false, false, MessageProperties.TEXT_PLAIN, "Hello World!".getBytes())
+  
+You would write this:
+
+    val exchange = channel.createExchange("myAwesomeExchange", 'fanout)
+    val queue = channel.createQueue("myQueue")
+    queue.bind(exchange, "someRoutingKey")
+    exchange.publish("someRoutingKey", "Hello World!")
+  
+Both cleaner and shorter! Some of this is due to not having to repeat names of the exchanges and queues, and some of it because of default values and optional arguments.
+
+Now, for the second issue: wouldn't it be great if you could have an actor as consumer? Something like this:
+
+    val subscriber = actor {
+      loop {
+        react Delivery(message) => println(message)
+      }
+    }
+    queue.subscribe(subscriber)
+    
+No problem.
