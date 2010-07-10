@@ -188,6 +188,11 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
         there was one(rmqChannel).basicConsume(is.eq("myQueue"), is.eq(true), any[Consumer])
       }
       
+      "by a function" in {
+        queue.subscribe { msg => println(msg) }
+        there was one(rmqChannel).basicConsume(is.eq("myQueue"), is.eq(true), any[Consumer])
+      }
+      
       "with manual ack" in {
         val subscriber = mock[Actor]
         queue.subscribe(subscriber, autoAck = false)

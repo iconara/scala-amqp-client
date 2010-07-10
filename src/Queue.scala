@@ -2,6 +2,7 @@ package iconara.amqp
 
 
 import scala.actors.Actor
+import scala.actors.Actor._
 
 import com.rabbitmq.client.{
   Channel => RMQChannel, 
@@ -23,10 +24,22 @@ class Queue(val name: String, channel: RMQChannel) {
     channel.queueUnbind(name, exchange.name, routingKey)
   }
   
-  def subscribe(subscriber: Actor, autoAck: Boolean = true) {
+  def subscribe(subscriber: Actor, autoAck: Boolean = true): Actor = {
     val consumerAdapter = new ActorConsumerAdapter(subscriber, this)
     channel.basicConsume(name, autoAck, consumerAdapter)
     consumers += (subscriber -> consumerAdapter)
+    subscriber
+  }
+  
+  def subscribe(subscriber: (String) => Unit): Actor = {
+    subscribe(actor {
+      loop {
+        react {
+          case Delivery(message, _) => subscriber(message)
+          case Shutdown(_) => exit()
+        }
+      }
+    })
   }
   
   def unsubscribe(subscriber: Actor) {

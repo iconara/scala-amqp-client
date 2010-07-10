@@ -29,22 +29,13 @@ object Example2 {
     exchange.bind("key", queue1, queue2, queue3)
 
     // this gets half the messages
-    queue1.subscribe(actor { loop { react {
-      case Delivery(message, _) => println("Q1 S1: %s".format(message))
-      case Shutdown(_) => exit()
-    }}})
+    queue1.subscribe(m => println("Q1 S1: %s".format(m)))
     
     // this gets the other half
-    queue1.subscribe(actor { loop { react {
-      case Delivery(message, _) => println("Q1 S2: %s".format(message))
-      case Shutdown(_) => exit()
-    }}})
-    
+    queue1.subscribe(m => println("Q1 S2: %s".format(m)))
+
     // this gets all the messages
-    queue2.subscribe(actor { loop { react {
-      case Delivery(message, _) => println("Q2 S1: %s".format(message))
-      case Shutdown(_) => exit()
-    }}})
+    queue2.subscribe(m => println("Q2 S1: %s".format(m)))
     
     val counter = actor {
       var n = 0
