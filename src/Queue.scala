@@ -41,9 +41,11 @@ class Queue(val name: String, channel: RMQChannel) {
 }
 
 sealed abstract class AmqpMessage
-case class Delivery(message: String, deliveryTag: Long) extends AmqpMessage
 case class Shutdown(reason: String) extends AmqpMessage
 case class Ack(deliveryTag: Long) extends AmqpMessage
+case class Delivery(message: String, deliveryTag: Long) extends AmqpMessage {
+  def createAck(): Ack = Ack(deliveryTag)
+}
 
 class ActorConsumerAdapter(consumer: Actor, queue: Queue) extends Actor with Consumer {
   start()

@@ -246,8 +246,8 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
         var gotDelivery = false
         loop {
           react {
-            case Delivery(msg, deliveryTag) =>
-              reply(Ack(deliveryTag))
+            case delivery @ Delivery(msg, deliveryTag) =>
+              reply(delivery.createAck())
               gotDelivery = true
             case 'get if gotDelivery => reply()
             case 'exit => exit()
