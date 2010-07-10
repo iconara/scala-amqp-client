@@ -85,6 +85,12 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
         exchange.name must be equalTo("myExchange")
       }
     }
+
+    "delete an exchange" in {
+      val exchange = channel.createExchange("myExchange")
+      exchange.delete()
+      there was one(rmqChannel).exchangeDelete("myExchange")
+    }
     
     "create a queue" in {
       "with just a name" in {
