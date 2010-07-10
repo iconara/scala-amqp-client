@@ -30,7 +30,8 @@ private object Utils {
 
 import Utils._
 
-class Connection(connectionFactory: ConnectionFactory) {
+class Connection(connectionFactory: ConnectionFactory = new ConnectionFactory()) {
+  
   private lazy val connection = connectionFactory.newConnection()
   
   def createChannel(): Channel = {
@@ -87,8 +88,8 @@ class Queue(val name: String, channel: RMQChannel) {
     channel.queueUnbind(name, exchange.name, routingKey)
   }
   
-  def subscribe(subscriber: Actor) {
-    channel.basicConsume(name, new ActorConsumerAdapter(subscriber))
+  def subscribe(subscriber: Actor, autoAck: Boolean = true) {
+    channel.basicConsume(name, autoAck, new ActorConsumerAdapter(subscriber))
   }
 }
 

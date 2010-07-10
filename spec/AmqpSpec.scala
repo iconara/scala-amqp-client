@@ -159,7 +159,13 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
       "by an actor" in {
         val subscriber = mock[Actor]
         queue.subscribe(subscriber)
-        there was one(rmqChannel).basicConsume(is.eq("myQueue"), any[Consumer])
+        there was one(rmqChannel).basicConsume(is.eq("myQueue"), is.eq(true), any[Consumer])
+      }
+      
+      "with manual ack" in {
+        val subscriber = mock[Actor]
+        queue.subscribe(subscriber, autoAck = false)
+        there was one(rmqChannel).basicConsume(is.eq("myQueue"), is.eq(false), any[Consumer])
       }
     }
   }
@@ -170,7 +176,7 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
     lazy val consumerAdapter = {
       val captor = ArgumentCaptor.forClass(classOf[Consumer])
       queue.subscribe(subscriber)
-      there was one(rmqChannel).basicConsume(anyString(), captor.capture())
+      there was one(rmqChannel).basicConsume(anyString(), is.eq(true), captor.capture())
       captor.getValue()
     }
     
