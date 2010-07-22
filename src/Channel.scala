@@ -57,6 +57,10 @@ class Channel(channel: RMQChannel) {
     val name = channel.queueDeclare().getQueue()
     new Queue(name, channel)
   }
+  
+  def recover(requeue: Boolean = true) {
+    channel.basicRecoverAsync(requeue)
+  }
 }
 
 private object Utils {

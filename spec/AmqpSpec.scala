@@ -127,6 +127,18 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
       val queue = channel.createQueue()
       queue.name must be equalTo("helloWorld")
     }
+  
+    "requeue unacked messages" in {
+      "and default to requeue = true" in {
+        channel.recover()
+        there was one(rmqChannel).basicRecoverAsync(true)
+      }
+      
+      "with requeue = false" in {
+        channel.recover(false)
+        there was one(rmqChannel).basicRecoverAsync(false)
+      }
+    }
   }
 
   "An exchange" can {
