@@ -35,7 +35,7 @@ class Queue(val name: String, channel: RMQChannel) {
     subscribe(actor {
       loop {
         react {
-          case Delivery(message, _) => subscriber(message)
+          case d: Delivery => subscriber(d.body)
           case Shutdown(_) => exit()
         }
       }
@@ -56,7 +56,9 @@ class Queue(val name: String, channel: RMQChannel) {
 sealed abstract class AmqpMessage
 case class Shutdown(reason: String) extends AmqpMessage
 case class Ack(deliveryTag: Long) extends AmqpMessage
-case class Delivery(message: String, deliveryTag: Long) extends AmqpMessage {
+case class Delivery(message: Array[Byte], deliveryTag: Long) extends AmqpMessage {
+  def body: String = body()
+  def body(encoding: String = "UTF-8"): String = new String(message, encoding)
   def createAck(): Ack = Ack(deliveryTag)
 }
 
@@ -81,7 +83,7 @@ class ActorConsumerAdapter(consumer: Actor, queue: Queue) extends Actor with Con
   }
 
   override def handleDelivery(consumerTag: String, envelope: Envelope, properties: AMQP.BasicProperties, body: Array[Byte]) {
-    val message = Delivery(new String(body), envelope.getDeliveryTag())
+    val message = Delivery(body, envelope.getDeliveryTag())
     this ! (consumer, message)
   }
   

@@ -133,18 +133,23 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
     val exchange = channel.createExchange("myExchange")
     
     "publish a message" in {
-      "with a key and a message" in {
+      "with a key and a message (as string)" in {
         exchange.publish("key", "message")
+        there was one(rmqChannel).basicPublish("myExchange", "key", false, false, basicProperties, "message".getBytes())
+      }
+
+      "with a key and a message (as bytes)" in {
+        exchange.publish("key", "message".getBytes())
         there was one(rmqChannel).basicPublish("myExchange", "key", false, false, basicProperties, "message".getBytes())
       }
       
       "with a key, message, mandatory and immediate" in {
-        exchange.publish("key", "message", true, true)
+        exchange.publish("key", "message".getBytes(), true, true)
         there was one(rmqChannel).basicPublish("myExchange", "key", true, true, basicProperties, "message".getBytes())
       }
 
       "with a key, message, mandatory and immediate (using named parameters)" in {
-        exchange.publish("key", "message", immediate = true, mandatory = false)
+        exchange.publish("key", "message".getBytes(), immediate = true, mandatory = false)
         there was one(rmqChannel).basicPublish("myExchange", "key", false, true, basicProperties, "message".getBytes())
       }
     }
@@ -229,9 +234,15 @@ class AmqpSpec extends Specification("AMQP") with Mockito {
     "get messages" in {
       val envelope = mock[Envelope]
       envelope.getDeliveryTag() returns 1234L
-      consumerAdapter.handleDelivery("1234", envelope, basicProperties, "theMessage".getBytes())
+      consumerAdapter.handleDelivery("1234", envelope, basicProperties, "theMessage".getBytes("UTF-8"))
       subscriber.messages match {
-        case Some(list) => list.head must be equalTo(Delivery("theMessage", 1234L))
+        case Some(list) => 
+          list.head match {
+            case d: Delivery =>
+              d.body must be equalTo("theMessage")
+              d.deliveryTag must be equalTo(1234L)
+            case x => fail("Got unexpected message (expected Delivery): %s".format(x))
+          }
         case None => fail("Got no message")
       }
     }

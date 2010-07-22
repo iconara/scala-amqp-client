@@ -31,8 +31,10 @@ class Channel(channel: RMQChannel) {
       throw new IllegalArgumentException("\"%s\" is not a valid exchange type".format(exchangeType.name))
     }
     channel.exchangeDeclare(name, exchangeType.name, durable, autoDelete, transformArguments(arguments))
-    new Exchange(name, channel)
+    getExchange(name)
   }
+  
+  def getExchange(name: String): Exchange = new Exchange(name, channel)
   
   def deleteExchange(name: String) {
     channel.exchangeDelete(name)
@@ -46,8 +48,10 @@ class Channel(channel: RMQChannel) {
     arguments: Map[String, Any] = Map.empty
   ): Queue = {
     channel.queueDeclare(name, durable, exclusive, autoDelete, transformArguments(arguments))
-    new Queue(name, channel)
+    getQueue(name)
   }
+  
+  def getQueue(name: String): Queue = new Queue(name, channel)
   
   def createQueue(): Queue = {
     val name = channel.queueDeclare().getQueue()
